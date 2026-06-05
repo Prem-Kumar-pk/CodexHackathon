@@ -69,7 +69,7 @@ export default function Customer360() {
         <Box
           sx={{
             display: "grid",
-            gridTemplateColumns: { xs: "1fr", md: "repeat(3, 1fr)" },
+            gridTemplateColumns: { xs: "1fr", md: "repeat(2, 1fr)", xl: "repeat(4, 1fr)" },
             gap: 2
           }}
         >
@@ -85,6 +85,12 @@ export default function Customer360() {
             value={customer.interactions.length}
             helper={`${customer.escalationHistory.length} escalations`}
             icon={<HistoryIcon color="warning" />}
+          />
+          <MetricCard
+            label="AI Health"
+            value={customer.intelligence?.healthScore ?? "-"}
+            helper={`${customer.intelligence?.escalationRisk?.level || "Low"} risk`}
+            icon={<MoodIcon color="secondary" />}
           />
         </Box>
 

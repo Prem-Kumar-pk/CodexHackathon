@@ -53,7 +53,7 @@ export default function SupervisorDashboard() {
         <Box
           sx={{
             display: "grid",
-            gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", xl: "repeat(4, 1fr)" },
+            gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", xl: "repeat(6, 1fr)" },
             gap: 2
           }}
         >
@@ -66,6 +66,8 @@ export default function SupervisorDashboard() {
             helper="Ticket update interval"
             icon={<SpeedIcon color="success" />}
           />
+          <MetricCard label="Avg Health" value={metrics.averageHealthScore} helper="AI customer health" icon={<SpeedIcon color="primary" />} />
+          <MetricCard label="At Risk" value={metrics.atRiskCustomers} helper="High or critical risk" icon={<WarningAmberIcon color="error" />} />
         </Box>
 
         <Box
@@ -128,6 +130,18 @@ export default function SupervisorDashboard() {
                 <YAxis allowDecimals={false} />
                 <Tooltip />
                 <Bar dataKey="value" fill="#b45309" />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartCard>
+
+          <ChartCard title="Customer Risk Distribution">
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={analytics.riskDistribution}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis allowDecimals={false} />
+                <Tooltip />
+                <Bar dataKey="value" fill="#dc2626" />
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>

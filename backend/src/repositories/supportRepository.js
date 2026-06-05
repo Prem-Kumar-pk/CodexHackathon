@@ -9,6 +9,10 @@ import {
   mockTickets,
   mockUsers
 } from "../data/mockData.js";
+import {
+  buildCustomerIntelligence,
+  buildCustomerListIntelligence
+} from "../services/intelligenceService.js";
 
 const channelRank = {
   Email: 1,
@@ -230,11 +234,18 @@ export async function listCustomers() {
           (ticket) => ticket.customerId === customer.id && ticket.status !== "Resolved"
         ).length;
 
-        return {
+        const enrichedCustomer = {
           ...customer,
           latestInteraction,
           openTickets,
+          tickets: mockTickets.filter((ticket) => ticket.customerId === customer.id),
+          escalationHistory: mockEscalations.filter((item) => item.customerId === customer.id),
           lastChannelRank: latestInteraction ? channelRank[latestInteraction.channel] : 0
+        };
+
+        return {
+          ...enrichedCustomer,
+          intelligenceSummary: buildCustomerListIntelligence(enrichedCustomer)
         };
       })
       .sort((a, b) => {
@@ -275,26 +286,40 @@ export async function listCustomers() {
       ORDER BY latest.timestamp DESC NULLS LAST, c.name ASC`
   );
 
-  return result.rows.map((row) => ({
-    ...toCustomer(row),
-    openTickets: Number(row.open_tickets || 0),
-    latestInteraction: row.latest_id
-      ? {
-          id: row.latest_id,
-          customerId: row.id,
-          customerName: row.name,
-          channel: row.latest_channel,
-          timestamp: row.latest_timestamp,
-          message: row.latest_message,
-          sentiment: row.latest_sentiment,
-          sentimentScore: Number(row.latest_sentiment_score),
-          sentimentTrend: row.latest_sentiment_trend,
-          priority: row.latest_priority,
-          status: row.latest_status,
-          agentId: row.latest_agent_id
-        }
-      : null
-  }));
+  return result.rows.map((row) => {
+    const customer = {
+      ...toCustomer(row),
+      openTickets: Number(row.open_tickets || 0),
+      latestInteraction: row.latest_id
+        ? {
+            id: row.latest_id,
+            customerId: row.id,
+            customerName: row.name,
+            channel: row.latest_channel,
+            timestamp: row.latest_timestamp,
+            message: row.latest_message,
+            sentiment: row.latest_sentiment,
+            sentimentScore: Number(row.latest_sentiment_score),
+            sentimentTrend: row.latest_sentiment_trend,
+            priority: row.latest_priority,
+            status: row.latest_status,
+            agentId: row.latest_agent_id
+          }
+        : null,
+      tickets: row.open_tickets
+        ? Array.from({ length: Number(row.open_tickets) }, (_, index) => ({
+            id: `open-ticket-${row.id}-${index}`,
+            status: "Open"
+          }))
+        : [],
+      escalationHistory: []
+    };
+
+    return {
+      ...customer,
+      intelligenceSummary: buildCustomerListIntelligence(customer)
+    };
+  });
 }
 
 export async function getCustomer360(id) {
@@ -302,7 +327,7 @@ export async function getCustomer360(id) {
     const customer = mockCustomers.find((item) => item.id === id);
     if (!customer) return null;
 
-    return {
+    const customer360 = {
       ...customer,
       interactions: applyInteractionFilters(mockInteractions, { customerId: id }).reverse(),
       sentimentHistory: mockSentimentHistory
@@ -312,6 +337,11 @@ export async function getCustomer360(id) {
         .filter((item) => item.customerId === id)
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
       tickets: mockTickets.filter((ticket) => ticket.customerId === id)
+    };
+
+    return {
+      ...customer360,
+      intelligence: buildCustomerIntelligence(customer360)
     };
   }
 
@@ -341,7 +371,7 @@ export async function getCustomer360(id) {
     )
   ]);
 
-  return {
+  const customer360 = {
     ...toCustomer(customerResult.rows[0]),
     interactions: interactionsResult.rows.map(toInteraction),
     sentimentHistory: sentimentResult.rows.map(toSentiment),
@@ -357,6 +387,11 @@ export async function getCustomer360(id) {
       createdAt: row.created_at,
       updatedAt: row.updated_at
     }))
+  };
+
+  return {
+    ...customer360,
+    intelligence: buildCustomerIntelligence(customer360)
   };
 }
 
@@ -449,6 +484,15 @@ export async function getAnalytics() {
 
 function buildAnalytics({ interactions, customers, users, tickets, escalations, openTickets, escalatedCases }) {
   const activeAgents = users.filter((user) => user.role === "agent" && user.status === "active").length;
+  const intelligence = customers.map((customer) => customer.intelligenceSummary).filter(Boolean);
+  const averageHealthScore = intelligence.length
+    ? Math.round(
+        intelligence.reduce((sum, item) => sum + item.healthScore, 0) / intelligence.length
+      )
+    : 0;
+  const atRiskCustomers = intelligence.filter((item) =>
+    ["High", "Critical"].includes(item.escalationRisk.level)
+  ).length;
   const avgResponseTime = tickets.length
     ? Math.round(
         tickets.reduce((sum, ticket) => {
@@ -462,6 +506,10 @@ function buildAnalytics({ interactions, customers, users, tickets, escalations, 
   const sentimentDistribution = countBy(interactions, "sentiment");
   const channelDistribution = countBy(interactions, "channel");
   const escalationDistribution = countBy(escalations, "level");
+  const riskDistribution = countBy(
+    intelligence.map((item) => ({ level: item.escalationRisk.level })),
+    "level"
+  );
 
   const sentimentTrends = interactions
     .slice()
@@ -479,11 +527,14 @@ function buildAnalytics({ interactions, customers, users, tickets, escalations, 
       escalatedCases,
       averageResponseTimeMinutes: avgResponseTime,
       totalCustomers: customers.length,
-      totalInteractions: interactions.length
+      totalInteractions: interactions.length,
+      averageHealthScore,
+      atRiskCustomers
     },
     sentimentDistribution,
     channelDistribution,
     escalationAnalytics: escalationDistribution,
+    riskDistribution,
     sentimentTrends
   };
 }

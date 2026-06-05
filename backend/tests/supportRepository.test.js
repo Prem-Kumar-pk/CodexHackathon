@@ -14,7 +14,11 @@ describe("supportRepository mock data", () => {
       expect.objectContaining({
         id: expect.any(String),
         latestInteraction: expect.any(Object),
-        openTickets: expect.any(Number)
+        openTickets: expect.any(Number),
+        intelligenceSummary: expect.objectContaining({
+          healthScore: expect.any(Number),
+          escalationRisk: expect.any(Object)
+        })
       })
     );
   });
@@ -37,6 +41,12 @@ describe("supportRepository mock data", () => {
     expect(customer.interactions.length).toBeGreaterThan(0);
     expect(customer.sentimentHistory.length).toBeGreaterThan(0);
     expect(customer.escalationHistory.length).toBeGreaterThan(0);
+    expect(customer.intelligence).toEqual(
+      expect.objectContaining({
+        healthScore: expect.any(Number),
+        nextBestAction: expect.any(String)
+      })
+    );
   });
 
   test("builds supervisor analytics from support data", async () => {
@@ -45,7 +55,9 @@ describe("supportRepository mock data", () => {
     expect(analytics.metrics).toMatchObject({
       activeAgents: 1,
       totalCustomers: 4,
-      totalInteractions: 5
+      totalInteractions: 5,
+      averageHealthScore: expect.any(Number),
+      atRiskCustomers: expect.any(Number)
     });
     expect(analytics.sentimentDistribution).toEqual(
       expect.arrayContaining([expect.objectContaining({ name: "Critical", value: 1 })])
