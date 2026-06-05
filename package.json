@@ -11,6 +11,19 @@
     "dev:backend": "npm --workspace backend run dev",
     "build:frontend": "npm --workspace frontend run build",
     "start:backend": "npm --workspace backend run start",
-    "seed": "npm --workspace backend run seed"
+    "seed": "npm --workspace backend run seed",
+    "test": "npm --workspace backend run test && npm --workspace frontend run test",
+    "test:backend": "npm --workspace backend run test",
+    "test:frontend": "npm --workspace frontend run test"
+  },
+  "devDependencies": {
+    "@babel/preset-env": "^7.26.0",
+    "@babel/preset-react": "^7.26.3",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
+    "@testing-library/user-event": "^14.5.2",
+    "babel-jest": "^29.7.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0"
   }
 }
